@@ -1,0 +1,156 @@
+;*******************************************************************************
+;
+;C Compiler for M32C/83 and 85 SKPs
+; COPYRIGHT(C) 1999(2000-2002) RENESAS TECHNOLOGY CORPORATION
+;AND RENESAS SOLUTIONS CORPORATION ALL RIGHTS RESERVED
+;
+;
+; ncrt0_32Cskp.a30 : NC30 startup program for 83 and 85 SKPs
+;
+;    
+;       
+;*******************************************************************************
+; Revision History
+; 1.0  Modified for use with M32C/83 and M32C/85 SKPs
+;  
+;---------------------------------------------------------------------
+; Section allocation
+;---------------------------------------------------------------------
+	.list OFF
+	.include sect308_32Cskp_demo.inc
+	.list ON
+
+;====================================================================
+; Interrupt section start
+;---------------------------------------------------------------------
+	.insf	start,S,0
+	.glb	start
+	.section	interrupt
+start:
+;---------------------------------------------------------------------
+; after reset,this program will start
+;---------------------------------------------------------------------
+	ldc	#istack_top,isp		;set istack pointer
+
+;========================================================================
+; ********************* NOTE: CHANGING BCLK SPEED HERE ******************
+; SETTING CLOCK to Main crystal /1.  SKP uses 8 MHz crystal so BCLK = 8 MHz 
+;========================================================================
+
+	bset	0,000Ah 		; Enable writes to clock control registers
+	mov.b	#12h,000Ch		; Set Main Clock Division Register for /1 mode
+	
+	bset	0,000Ah 		; Disable writes to clock register								 
+  
+	fset U
+	ldc	#stack_top,	sp		;set interrupt stack pointer 
+	fclr U
+
+	ldc	#data_SE_top,sb		;set sb register 
+
+	fset	b				;switch to bank 1
+	ldc	#data_SE_top,sb		;set sb register 
+	fclr	b				;switch to bank 0
+
+	ldc	#VECTOR_ADR,intb
+
+;====================================================================
+;Variable initialization.  Macro's are used (see sect308_SKP) to 
+; initialize variables
+;--------------------------------------------------------------------
+;====================================================================
+; NEAR area initialize.
+;--------------------------------------------------------------------
+; bss zero clear
+;--------------------------------------------------------------------
+	BZERO	bss_SE_top,bss_SE
+	BZERO	bss_SO_top,bss_SO
+	BZERO	bss_NE_top,bss_NE
+	BZERO	bss_NO_top,bss_NO
+
+;---------------------------------------------------------------------
+; initialize data section
+;---------------------------------------------------------------------
+	BCOPY	data_SEI_top,data_SE_top,data_SE
+	BCOPY	data_SOI_top,data_SO_top,data_SO
+	BCOPY	data_NEI_top,data_NE_top,data_NE
+	BCOPY	data_NOI_top,data_NO_top,data_NO
+
+;====================================================================
+; FAR area initialize.
+;---------------------------------------------------------------------
+; bss zero clear
+;---------------------------------------------------------------------
+;	BZERO	bss_SE_top,bss_SE
+;	BZERO	bss_SO_top,bss_SO
+;	BZERO	bss_6E_top,bss_6E
+;	BZERO	bss_6O_top,bss_6O
+	BZERO	bss_FE_top,bss_FE
+	BZERO	bss_FO_top,bss_FO
+
+;---------------------------------------------------------------------
+; Copy edata_E(O) section from edata_EI(OI) section
+;---------------------------------------------------------------------
+;	BCOPY	data_SEI_top,data_SE_top,data_SE
+;	BCOPY	data_SOI_top,data_SO_top,data_SO
+;	BCOPY	data_6EI_top,data_6E_top,data_6E
+;	BCOPY	data_6OI_top,data_6O_top,data_6O
+	BCOPY	data_FEI_top,data_FE_top,data_FE
+	BCOPY	data_FOI_top,data_FO_top,data_FO
+
+	ldc	#istack_top,isp	 ; reset interrupt stack pointer after use
+;====================================================================
+; heap area initialize
+;---------------------------------------------------------------------
+.if __HEAP__ != 1
+
+	HEAPINIT
+
+	.endif
+
+;====================================================================
+; Initialize standard I/O
+;====================================================================
+; This function is not called when using the SKP because the init.c function
+; initializes UART1 which is used by the in-circuit debugger.  To use this
+; function first modify the init.c so the UART1 is not initialized
+;---------------------------------------------------------------------
+
+;.if __STANDARD_IO__ != 1												   
+;	.glb	_init
+;	.call	_init,G
+;	jsr.a	_init
+;.endif
+
+;====================================================================
+; Call main() function
+;---------------------------------------------------------------------
+
+	.glb	_main
+	jsr.a	_main
+
+;====================================================================
+; exit() function
+;---------------------------------------------------------------------
+	.glb	_exit
+	.glb	$exit
+_exit:			   ; End program
+$exit:
+	jmp	_exit
+	.einsf
+
+;====================================================================
+; dummy interrupt function
+;---------------------------------------------------------------------
+	.glb	dummy_int
+dummy_int:
+	reit
+	.end
+;*******************************************************************************
+;
+;     C COMPILER for M32C/83,85
+; COPYRIGHT(C) 1999(2000-2002) RENESAS TECHNOLOGY CORPORATION
+; AND RENESAS SOLUTIONS CORPORATION ALL RIGHTS RESERVED
+;
+;
+;*******************************************************************************
